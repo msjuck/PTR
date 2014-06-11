@@ -41,11 +41,11 @@ class interface:
 			self.state = None
 
 	def run(self, backlog=5):
-		running = True
+		self.running = True
 		t = threading.Thread(target=self._run, args=(backlog,))
 		t.start()
 		self._t = t
-		return t
+		return self._t
 
 	def send(self, msg): # Same as socket.sendall()?
 		if not state:return False
@@ -79,6 +79,7 @@ class interface:
 
 	def _client_dead(self):
 		self.clients = []
+		self.state = 'listening'
 
 	def __del__(self):
 		self.running = False
