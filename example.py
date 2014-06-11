@@ -2,7 +2,7 @@
 #usage
 
 #-------------------------------\
-
+#REMOTE.py
 def sum(a,b):
     retrurn a+b;
 
@@ -12,7 +12,7 @@ i = interface(func=sum)
 
 
 #-------------------------------\
-
+#LOCAL.py
 i = interface()
 ret_json = i.get(func=sum, args='{"a": 1, "b":2}')
 
