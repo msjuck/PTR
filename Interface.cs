@@ -9,6 +9,7 @@ using System.Net.Sockets;
 using System.Net.Json;
 
 //Teemo man~
+//왈왈와로알 멍멍멍 
 namespace Client
 {
     class Interface
