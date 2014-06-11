@@ -33,7 +33,7 @@ class interface:
 			print 'listening'
 			while running:
 					client = self.s.accept() # (clientsocket, address)
-					clients.append(client)
+					self.clients.append(client)
 					self.state = 'connected'
 					print 'connected'
 			print 'run over'
@@ -78,7 +78,7 @@ class interface:
 			self._client_dead()
 
 	def _client_dead(self):
-		clients = []
+		self.clients = []
 
 	def __del__(self):
 		self.running = False
