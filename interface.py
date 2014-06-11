@@ -7,14 +7,14 @@ import threading
 class interface:
 
 	HOST 		= ''                 # Symbolic name meaning all available interfaces
-	PORT 		= 50007              # Arbitrary non-privileged port
+	PORT 		= 5000              # Arbitrary non-privileged port
 	s 		= None               # new socket just created init or existing socket passing by arg 
 	state 		= None
 	clients 	= []                 
 	running 	= False              # a flag allowing listening foever 
 	_t 		= None               # thread instance
 
-	def __init__(self, sock=None, HOST='',PORT=50007):
+	def __init__(self, sock=None, HOST='',PORT=5000):
 		
 		# Set Values
 		self.HOST = HOST
@@ -26,20 +26,21 @@ class interface:
 		else:
 			self.s = sock
 
-	def _run(self, backlog=1): # The backlog argument specifies the maximum number of queued connections and should be at least 0;
+	def _run(self, backlog=5):
 		try:
 			self.s.listen(backlog)
 			self.state = 'listening'
 			print 'listening'
 			while running:
-					client = serversocket.accept() # (clientsocket, address)
+					client = self.s.accept() # (clientsocket, address)
 					clients.append(client)
 					self.state = 'connected'
 					print 'connected'
+			print 'run over'
 		except:
 			self.state = None
 
-	def run(self, backlog=1):
+	def run(self, backlog=5):
 		running = True
 		t = threading.Thread(target=self._run, args=(backlog,))
 		t.start()
@@ -60,7 +61,8 @@ class interface:
 			self._client_dead()
 
 	def recv(self,MSGLEN=2048):
-		if not state:return False
+		if self.state is not 'connected':
+			return False
 		chunks = []
 		bytes_recd = 0
 		try:
@@ -88,8 +90,13 @@ class interface:
 i = interface()
 i.run()
 
+
 while True:
 	#interface run forever
-	pass
+	data = i.recv()
+	if data:
+		print data
+
+	
 
 	
