@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,41 +8,51 @@ using System.Net;
 using System.Net.Sockets;
 using System.Net.Json;
 
-//Teemo man~
-//왈왈와로알 멍멍멍 
 namespace Client
 {
-    class Interface
+    // State object for receiving data from remote device.
+    public class StateObject
     {
-        public Interface(string ipAddr, int port)
-        {
-            this.ipAddress = IPAddress.Parse(ipAddr);
-            this.port = port;
-        }
+        // Client socket.
+        public Socket workSocket = null;
+        // Size of receive buffer.
+        public const int BufferSize = 256;
+        // Receive buffer.
+        public byte[] buffer = new byte[BufferSize];
+        // Received data string.
+        public StringBuilder sb = new StringBuilder();
+    }
 
-        private IPAddress ipAddress;
-        private int port;
+    public class Interface
+    {
+        // The IPAddrss and port number for the remote device.
+        private const string address = "127.0.0.1";
+        private const int port = 5000;
 
-        private ManualResetEvent connectDone = new ManualResetEvent(false);
-        private ManualResetEvent sendDone = new ManualResetEvent(false);
-        private ManualResetEvent receiveDone = new ManualResetEvent(false);
+        // ManualResetEvent instances signal completion.
+        private static ManualResetEvent connectDone =
+            new ManualResetEvent(false);
+        private static ManualResetEvent sendDone =
+            new ManualResetEvent(false);
+        private static ManualResetEvent receiveDone =
+            new ManualResetEvent(false);
 
+        // The response from the remote device.
         private static String response = String.Empty;
 
-        public void Run()
+        public static void StartClient(string s)
         {
-            RunClient();
-        }
-
-        private void RunClient()
-        {
+            // Connect to a remote device.
             try
             {
-                //Establish the remote endpoint for the socket.                
+                // Establish the remote endpoint for the socket.                
+
+                IPAddress ipAddress = IPAddress.Parse(address);
                 IPEndPoint remoteEP = new IPEndPoint(ipAddress, port);
 
                 // Create a TCP/IP socket.
-                Socket client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                Socket client = new Socket(AddressFamily.InterNetwork,
+                    SocketType.Stream, ProtocolType.Tcp);
 
                 // Connect to the remote endpoint.
                 client.BeginConnect(remoteEP,
@@ -50,13 +60,20 @@ namespace Client
                 connectDone.WaitOne();
 
                 // Send test data to the remote device.
-                Send(client, "This is a test<EOF>");
+                Send(client, s);
                 sendDone.WaitOne();
 
                 // Receive the response from the remote device.
                 Receive(client);
                 receiveDone.WaitOne();
 
+                // Write the response to the console.
+                Console.WriteLine("Response received : {0}", response);
+
+                // Release the socket.
+                client.Shutdown(SocketShutdown.Both);
+                client.Close();
+
             }
             catch (Exception e)
             {
@@ -64,48 +81,21 @@ namespace Client
             }
         }
 
-        private void ConnectCallback(IAsyncResult ar)
-        {
-            try
-            {
-                // Retrieve the socket from this
-                Socket client = (Socket)ar.AsyncState;
-
-                //Complete the connection
-                client.EndConnect(ar);
-
-                Console.WriteLine("Socket connected to {0}",
-                client.RemoteEndPoint.ToString());
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.ToString());
-            }
-        }
-
-        private void Send(Socket client, String data)
-        {
-            // Convert the string data to byte data using ASCII encoding.
-            byte[] byteData = Encoding.ASCII.GetBytes(data);
-
-            // Begin sending the data to the remote device.
-            client.BeginSend(byteData, 0, byteData.Length, 0,
-                new AsyncCallback(SendCallback), client);
-        }
-
-        private void SendCallback(IAsyncResult ar)
+        private static void ConnectCallback(IAsyncResult ar)
         {
             try
             {
                 // Retrieve the socket from the state object.
                 Socket client = (Socket)ar.AsyncState;
 
-                // Complete sending the data to the remote device.
-                int bytesSent = client.EndSend(ar);
-                Console.WriteLine("Sent {0} bytes to server.", bytesSent);
+                // Complete the connection.
+                client.EndConnect(ar);
 
-                // Signal that all bytes have been sent.
-                sendDone.Set();
+                Console.WriteLine("Socket connected to {0}",
+                    client.RemoteEndPoint.ToString());
+
+                // Signal that the connection has been made.
+                connectDone.Set();
             }
             catch (Exception e)
             {
@@ -113,7 +103,7 @@ namespace Client
             }
         }
 
-        private void Receive(Socket client)
+        private static void Receive(Socket client)
         {
             try
             {
@@ -131,7 +121,7 @@ namespace Client
             }
         }
 
-        private void ReceiveCallback(IAsyncResult ar)
+        private static void ReceiveCallback(IAsyncResult ar)
         {
             try
             {
@@ -168,18 +158,65 @@ namespace Client
                 Console.WriteLine(e.ToString());
             }
         }
-    }
 
-    // State object for receiving data from remote device.
-    public class StateObject
-    {
-        // Client socket.
-        public Socket workSocket = null;
-        // Size of receive buffer.
-        public const int BufferSize = 256;
-        // Receive buffer.
-        public byte[] buffer = new byte[BufferSize];
-        // Received data string.
-        public StringBuilder sb = new StringBuilder();
+        private static void Send(Socket client, String data)
+        {
+            // Convert the string data to byte data using ASCII encoding.
+            byte[] byteData = Encoding.ASCII.GetBytes(data);
+
+            // Begin sending the data to the remote device.
+            client.BeginSend(byteData, 0, byteData.Length, 0,
+                new AsyncCallback(SendCallback), client);
+        }
+
+        private static void SendCallback(IAsyncResult ar)
+        {
+            try
+            {
+                // Retrieve the socket from the state object.
+                Socket client = (Socket)ar.AsyncState;
+
+                // Complete sending the data to the remote device.
+                int bytesSent = client.EndSend(ar);
+                Console.WriteLine("Sent {0} bytes to server.", bytesSent);
+
+                // Signal that all bytes have been sent.
+                sendDone.Set();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
+        }
+
+        public static int Main(String[] args)
+        {            
+            string func = string.Empty;
+            string arg = "arg";
+
+            JsonObjectCollection collection = new JsonObjectCollection();
+            JsonArrayCollection argCollection = new JsonArrayCollection("args");
+
+            if(args.Length > 1)
+            {
+                func = args[0];
+                collection.Add(new JsonStringValue("func", func));
+
+                for (int i = 1; i < args.Length; i++ )
+                {
+                    argCollection.Add(new JsonStringValue(arg+i, args[i]));                    
+                }                    
+            }
+            collection.Add(argCollection);
+
+            string s = collection.ToString();
+            s = s + "<EOF>";
+
+            Console.WriteLine(s);
+
+            StartClient(s);
+
+            return 0;
+        }
     }
 }
